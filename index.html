@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="id" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator - Buat Kode QR Instan</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- QRCode.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Kustomisasi input color agar lebih rapi di berbagai browser */
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 0.5rem;
+        }
+
+        /* Animasi halus untuk QR Container */
+        #qrcode img, #qrcode canvas {
+            margin: 0 auto;
+            border-radius: 0.5rem;
+            max-width: 100%;
+            height: auto !important;
+            transition: transform 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-300 font-sans antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- Navbar / Header -->
+    <header class="sticky top-0 z-30 backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                    <i data-lucide="qr-code" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-tight leading-none">QRGen<span class="text-brand-600 dark:text-brand-500">.id</span></h1>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Pembuat Kode QR Instan</p>
+                </div>
+            </div>
+
+            <!-- Tombol Toggle Mode Terang / Gelap -->
+            <button id="themeToggle" type="button" aria-label="Ubah Tema" class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all active:scale-95">
+                <i data-lucide="moon" id="moonIcon" class="w-5 h-5 block dark:hidden"></i>
+                <i data-lucide="sun" id="sunIcon" class="w-5 h-5 hidden dark:block text-amber-400"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        
+        <!-- Intro Text -->
+        <div class="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+            <h2 class="text-2xl sm:text-3xl font-bold tracking-tight mb-2">Ubah Tautan & Teks Menjadi Kode QR</h2>
+            <p class="text-sm sm:text-base text-slate-600 dark:text-slate-400">Masukkan URL, tautan media sosial, atau teks apa pun. Kustomisasi warna dan unduh gambar PNG berkualitas tinggi secara gratis.</p>
+        </div>
+
+        <!-- Grid Layout: Kiri (Kontrol) & Kanan (Pratinjau) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
+            
+            <!-- Panel Kiri: Form Input & Kustomisasi (7 Kolom) -->
+            <div class="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-5 sm:p-7 space-y-6">
+                
+                <!-- Input Teks / URL -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label for="qrText" class="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            Tautan (URL) atau Teks
+                        </label>
+                        <!-- Badge Status Validasi -->
+                        <span id="validationBadge" class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 transition-all">
+                            <i data-lucide="link" class="w-3 h-3"></i>
+                            <span id="validationText">URL Valid</span>
+                        </span>
+                    </div>
+
+                    <div class="relative">
+                        <textarea 
+                            id="qrText" 
+                            rows="3" 
+                            placeholder="Contoh: https://www.google.com atau ketik pesan Anda..."
+                            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-3 text-sm sm:text-base text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none transition-all resize-none"
+                        >https://www.indonesia.go.id</textarea>
+                        
+                        <!-- Tombol Clear Cepat di dalam input -->
+                        <button id="clearInputBtn" type="button" title="Hapus teks" class="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <p id="helperText" class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        Kode QR otomatis diperbarui saat Anda mengetik.
+                    </p>
+                </div>
+
+                <hr class="border-slate-100 dark:border-slate-800">
+
+                <!-- Pengaturan Kustomisasi -->
+                <div class="space-y-5">
+                    <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4 text-brand-600 dark:text-brand-500"></i>
+                        Kustomisasi Tampilan & Tema Lucu
+                    </h3>
+
+                    <!-- Pilihan Bingkai Lucu (Frame Shape) -->
+                    <div>
+                        <span class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">Pilih Bentuk Bingkai (Unisex & Lucu):</span>
+                        <div class="grid grid-cols-3 sm:grid-cols-5 gap-2" id="frameSelector">
+                            <button type="button" data-frame="none" class="frame-btn active flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-brand-600 bg-brand-50/70 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300 transition-all">
+                                <span class="text-lg mb-1">⬜</span>
+                                <span class="text-[11px] font-semibold">Polos</span>
+                            </button>
+                            <button type="button" data-frame="gift" class="frame-btn flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-brand-400 bg-slate-50/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 transition-all">
+                                <span class="text-lg mb-1">🎁</span>
+                                <span class="text-[11px] font-semibold">Kado</span>
+                            </button>
+                            <button type="button" data-frame="love" class="frame-btn flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-brand-400 bg-slate-50/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 transition-all">
+                                <span class="text-lg mb-1">💖</span>
+                                <span class="text-[11px] font-semibold">Love</span>
+                            </button>
+                            <button type="button" data-frame="cat" class="frame-btn flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-brand-400 bg-slate-50/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 transition-all">
+                                <span class="text-lg mb-1">🐱</span>
+                                <span class="text-[11px] font-semibold">Kucing</span>
+                            </button>
+                            <button type="button" data-frame="cloud" class="frame-btn flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-brand-400 bg-slate-50/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 transition-all">
+                                <span class="text-lg mb-1">☁️</span>
+                                <span class="text-[11px] font-semibold">Awan</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Teks Label pada Bingkai (Misal: SCAN ME) -->
+                    <div id="frameTextContainer" class="hidden p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 space-y-2 transition-all">
+                        <div class="flex items-center justify-between">
+                            <label for="frameText" class="text-xs font-semibold text-slate-700 dark:text-slate-300">Tulisan di Bingkai / Tutup Kado</label>
+                            <span class="text-[10px] text-slate-400">Maks. 18 karakter</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="text" id="frameText" maxlength="18" value="SCAN ME" placeholder="Contoh: SCAN ME, BUKA YUK!" class="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-800 dark:text-slate-100 focus:border-brand-500 focus:outline-none">
+                            <div class="flex gap-1">
+                                <button type="button" data-label="SCAN ME" class="quick-label px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-200/80 dark:bg-slate-800 hover:bg-brand-100 dark:hover:bg-brand-900/50 text-slate-700 dark:text-slate-300 transition-colors">SCAN ME</button>
+                                <button type="button" data-label="FOR YOU ✨" class="quick-label px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-200/80 dark:bg-slate-800 hover:bg-brand-100 dark:hover:bg-brand-900/50 text-slate-700 dark:text-slate-300 transition-colors">FOR YOU</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gaya Titik QR & Ikon Tengah -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Gaya Titik QR -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Bentuk Titik QR</label>
+                            <div class="grid grid-cols-3 gap-1.5" id="dotStyleSelector">
+                                <button type="button" data-dot="square" class="dot-btn active py-2 px-2 rounded-lg border-2 border-brand-600 bg-brand-50/70 dark:bg-brand-950/50 text-xs font-semibold text-brand-700 dark:text-brand-300 transition-all">Kotak</button>
+                                <button type="button" data-dot="rounded" class="dot-btn py-2 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300 transition-all">Bulat</button>
+                                <button type="button" data-dot="diamond" class="dot-btn py-2 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300 transition-all">Permata</button>
+                            </div>
+                        </div>
+
+                        <!-- Stiker / Emoji Tengah -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Stiker Tengah QR</label>
+                            <div class="flex items-center gap-1.5 overflow-x-auto pb-1" id="centerIconSelector">
+                                <button type="button" data-icon="" class="icon-btn active w-9 h-9 shrink-0 rounded-lg border-2 border-brand-600 bg-brand-50/70 dark:bg-brand-950/50 text-xs font-semibold text-brand-700 dark:text-brand-300 flex items-center justify-center">Off</button>
+                                <button type="button" data-icon="🎁" class="icon-btn w-9 h-9 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-base flex items-center justify-center hover:border-brand-400">🎁</button>
+                                <button type="button" data-icon="❤️" class="icon-btn w-9 h-9 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-base flex items-center justify-center hover:border-brand-400">❤️</button>
+                                <button type="button" data-icon="😎" class="icon-btn w-9 h-9 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-base flex items-center justify-center hover:border-brand-400">😎</button>
+                                <button type="button" data-icon="⭐" class="icon-btn w-9 h-9 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-base flex items-center justify-center hover:border-brand-400">⭐</button>
+                                <button type="button" data-icon="🐾" class="icon-btn w-9 h-9 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-base flex items-center justify-center hover:border-brand-400">🐾</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pilihan Warna (Foreground & Background) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Warna QR (Foreground) -->
+                        <div class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 flex items-center justify-between">
+                            <div>
+                                <label for="fgColor" class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Warna QR & Tema</label>
+                                <span id="fgHex" class="text-xs font-mono text-slate-500 uppercase">#0F172A</span>
+                            </div>
+                            <input type="color" id="fgColor" value="#0f172a" class="w-10 h-10 rounded-lg cursor-pointer shadow-sm border border-slate-200 dark:border-slate-700">
+                        </div>
+
+                        <!-- Warna Latar (Background) -->
+                        <div class="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 flex items-center justify-between">
+                            <div>
+                                <label for="bgColor" class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Warna Latar</label>
+                                <span id="bgHex" class="text-xs font-mono text-slate-500 uppercase">#FFFFFF</span>
+                            </div>
+                            <input type="color" id="bgColor" value="#ffffff" class="w-10 h-10 rounded-lg cursor-pointer shadow-sm border border-slate-200 dark:border-slate-700">
+                        </div>
+                    </div>
+
+                    <!-- Preset Tema & Warna Cepat (Unisex untuk Cowok & Cewek) -->
+                    <div>
+                        <span class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Tema Warna Cepat (Cowok & Cewek):</span>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" data-fg="#0f172a" data-bg="#ffffff" class="preset-color px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 hover:border-brand-500 flex items-center gap-1.5 bg-white dark:bg-slate-800 transition-all">
+                                <span class="w-3 h-3 rounded-full bg-slate-900 border border-slate-300"></span> Klasik
+                            </button>
+                            <button type="button" data-fg="#e11d48" data-bg="#fff1f2" class="preset-color px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 hover:border-brand-500 flex items-center gap-1.5 bg-white dark:bg-slate-800 transition-all">
+                                <span class="w-3 h-3 rounded-full bg-rose-600"></span> Sweet Rose
+                            </button>
+                            <button type="button" data-fg="#2563eb" data-bg="#eff6ff" class="preset-color px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 hover:border-brand-500 flex items-center gap-1.5 bg-white dark:bg-slate-800 transition-all">
+                                <span class="w-3 h-3 rounded-full bg-blue-600"></span> Cool Blue
+                            </button>
+                            <button type="button" data-fg="#059669" data-bg="#ecfdf5" class="preset-color px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 hover:border-brand-500 flex items-center gap-1.5 bg-white dark:bg-slate-800 transition-all">
+                                <span class="w-3 h-3 rounded-full bg-emerald-600"></span> Mint Fresh
+                            </button>
+                            <button type="button" data-fg="#7c3aed" data-bg="#f5f3ff" class="preset-color px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 hover:border-brand-500 flex items-center gap-1.5 bg-white dark:bg-slate-800 transition-all">
+                                <span class="w-3 h-3 rounded-full bg-violet-600"></span> Aesthetic Lilac
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Pengaturan Ukuran / Resolusi Unduhan -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label for="qrSize" class="text-xs font-semibold text-slate-700 dark:text-slate-300">Resolusi Unduhan PNG</label>
+                            <span id="sizeLabel" class="text-xs font-mono font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-md">512 × 512 px</span>
+                        </div>
+                        <input type="range" id="qrSize" min="256" max="1024" step="128" value="512" class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-600">
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                            <span>256px (Kecil)</span>
+                            <span>512px (Standar)</span>
+                            <span>1024px (HD)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Kanan: Pratinjau & Aksi Unduh (5 Kolom) -->
+            <div class="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-5 sm:p-7 flex flex-col items-center">
+                
+                <div class="w-full flex items-center justify-between mb-4">
+                    <span class="text-sm font-semibold text-slate-700 dark:text-slate-200">Pratinjau Langsung</span>
+                    <span class="text-xs text-slate-400">Siap Pindai</span>
+                </div>
+
+                <!-- Kotak Wadah QR Code -->
+                <div id="qrWrapper" class="w-full max-w-[310px] rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-4 flex items-center justify-center bg-slate-50/70 dark:bg-slate-950/70 transition-all relative overflow-hidden">
+                    
+                    <!-- Wadah Hidden untuk generate data matriks QRCode.js -->
+                    <div id="qrcode" class="hidden"></div>
+
+                    <!-- Canvas Kustom untuk menggambar bentuk bingkai lucu + QR + Label -->
+                    <canvas id="styledQrCanvas" class="w-full h-auto rounded-xl shadow-sm transition-all"></canvas>
+
+                    <!-- State Kosong jika input dihapus semua -->
+                    <div id="emptyState" class="hidden flex-col items-center text-center p-6">
+                        <div class="w-12 h-12 rounded-full bg-slate-200/70 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-3">
+                            <i data-lucide="qr-code" class="w-6 h-6"></i>
+                        </div>
+                        <p class="text-sm font-medium text-slate-600 dark:text-slate-300">Menunggu Input</p>
+                        <p class="text-xs text-slate-400 mt-1">Ketik teks atau tautan di samping untuk membuat QR Code.</p>
+                    </div>
+                </div>
+
+                <!-- Peringatan Kontras Rendah (Opsional jika pengguna pilih warna mirip) -->
+                <div id="contrastWarning" class="hidden w-full mt-3 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5"></i>
+                    <span>Kontras warna terlalu mirip. Pastikan warna QR cukup gelap/kontras terhadap latar belakang agar mudah dipindai kamera.</span>
+                </div>
+
+                <!-- Tombol Aksi Utama -->
+                <div class="w-full mt-6 space-y-3">
+                    <!-- Tombol Download PNG -->
+                    <button id="downloadBtn" type="button" class="w-full py-3 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold text-sm shadow-md shadow-brand-600/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Download PNG</span>
+                    </button>
+
+                    <!-- Tombol Sekunder: Salin Link & Reset -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="copyBtn" type="button" class="py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                            <span>Salin Teks</span>
+                        </button>
+
+                        <button id="resetBtn" type="button" class="py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 dark:hover:border-rose-800/50 text-slate-700 dark:text-slate-200 font-medium text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]">
+                            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            <span>Reset</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200/80 dark:border-slate-800/80 py-6 mt-auto">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <p>© 2026 QRGen.id — Pembuat Kode QR Cepat & Aman (Diproses langsung di browser Anda).</p>
+            <p>Privasi Terjaga • Tanpa Penyimpanan Server</p>
+        </div>
+    </footer>
+
+    <!-- Toast Notification (Pengganti alert) -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 pointer-events-none transition-all duration-300">
+        <div class="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-sm font-medium">
+            <i data-lucide="check-circle-2" id="toastIcon" class="w-4 h-4 text-emerald-400 dark:text-emerald-600"></i>
+            <span id="toastMessage">Berhasil disalin!</span>
+        </div>
+    </div>
+
+    <!-- Logika Aplikasi JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inisialisasi ikon Lucide
+            lucide.createIcons();
+
+            // Referensi Elemen DOM
+            const qrText = document.getElementById('qrText');
+            const clearInputBtn = document.getElementById('clearInputBtn');
+            const fgColorInput = document.getElementById('fgColor');
+            const bgColorInput = document.getElementById('bgColor');
+            const fgHex = document.getElementById('fgHex');
+            const bgHex = document.getElementById('bgHex');
+            const qrSizeInput = document.getElementById('qrSize');
+            const sizeLabel = document.getElementById('sizeLabel');
+            const qrcodeContainer = document.getElementById('qrcode');
+            const styledQrCanvas = document.getElementById('styledQrCanvas');
+            const emptyState = document.getElementById('emptyState');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const copyBtn = document.getElementById('copyBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const validationBadge = document.getElementById('validationBadge');
+            const validationText = document.getElementById('validationText');
+            const contrastWarning = document.getElementById('contrastWarning');
+            const themeToggle = document.getElementById('themeToggle');
+            const presetButtons = document.querySelectorAll('.preset-color');
+            
+            // Elemen Baru untuk Fitur Bentuk & Tema
+            const frameButtons = document.querySelectorAll('.frame-btn');
+            const frameTextContainer = document.getElementById('frameTextContainer');
+            const frameTextInput = document.getElementById('frameText');
+            const quickLabelButtons = document.querySelectorAll('.quick-label');
+            const dotButtons = document.querySelectorAll('.dot-btn');
+            const iconButtons = document.querySelectorAll('.icon-btn');
+
+            // State Default & Aktif
+            const DEFAULT_STATE = {
+                text: 'https://www.indonesia.go.id',
+                fg: '#0f172a',
+                bg: '#ffffff',
+                size: 512,
+                frame: 'none',
+                frameText: 'SCAN ME',
+                dotStyle: 'square',
+                centerIcon: ''
+            };
+
+            let currentFrame = DEFAULT_STATE.frame;
+            let currentDotStyle = DEFAULT_STATE.dotStyle;
+            let currentCenterIcon = DEFAULT_STATE.centerIcon;
+
+            let qrInstance = null;
+            let toastTimeout = null;
+            // --- 5. FUNGSI RENDER QR KUSTOM DENGAN BENTUK LUCU & LABEL ---
+            function renderCustomStyledQR(matrixData, moduleCount) {
+                const fg = fgColorInput.value;
+                const bg = bgColorInput.value;
+                const baseSize = parseInt(qrSizeInput.value, 10);
+                const labelText = (frameTextInput.value || 'SCAN ME').toUpperCase();
+
+                // Tentukan dimensi kanvas sesuai bentuk bingkai
+                let canvasWidth = baseSize;
+                let canvasHeight = baseSize;
+                let qrSize = Math.round(baseSize * 0.78);
+                let qrX = Math.round((canvasWidth - qrSize) / 2);
+                let qrY = Math.round((canvasHeight - qrSize) / 2);
+
+                if (currentFrame === 'gift') {
+                    canvasHeight = Math.round(baseSize * 1.24);
+                    qrSize = Math.round(baseSize * 0.68);
+                    qrX = Math.round((canvasWidth - qrSize) / 2);
+                    qrY = Math.round(canvasHeight * 0.34);
+                } else if (currentFrame === 'love') {
+                    canvasHeight = Math.round(baseSize * 1.15);
+                    qrSize = Math.round(baseSize * 0.56);
+                    qrX = Math.round((canvasWidth - qrSize) / 2);
+                    qrY = Math.round(canvasHeight * 0.25);
+                } else if (currentFrame === 'cat') {
+                    canvasHeight = Math.round(baseSize * 1.20);
+                    qrSize = Math.round(baseSize * 0.64);
+                    qrX = Math.round((canvasWidth - qrSize) / 2);
+                    qrY = Math.round(canvasHeight * 0.28);
+                } else if (currentFrame === 'cloud') {
+                    canvasHeight = Math.round(baseSize * 1.12);
+                    qrSize = Math.round(baseSize * 0.62);
+                    qrX = Math.round((canvasWidth - qrSize) / 2);
+                    qrY = Math.round(canvasHeight * 0.26);
+                }
+
+                styledQrCanvas.width = canvasWidth;
+                styledQrCanvas.height = canvasHeight;
+                const ctx = styledQrCanvas.getContext('2d');
+
+                // Helper pembantu menggambar kotak sudut membulat
+                const drawRoundRect = (x, y, w, h, r) => {
+                    ctx.beginPath();
+                    ctx.moveTo(x + r, y);
+                    ctx.arcTo(x + w, y, x + w, y + h, r);
+                    ctx.arcTo(x + w, y + h, x, y + h, r);
+                    ctx.arcTo(x, y + h, x, y, r);
+                    ctx.arcTo(x, y, x + w, y, r);
+                    ctx.closePath();
+                };
+
+                // Helper menggambar teks label pill di dalam bingkai
+                const drawLabelPill = (text, centerX, centerY, pillBg, pillTextColor, fontSize) => {
+                    ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+                    const textMetrics = ctx.measureText(text);
+                    const padX = fontSize * 1.1;
+                    const padY = fontSize * 0.55;
+                    const pillW = Math.min(canvasWidth * 0.72, textMetrics.width + padX * 2);
+                    const pillH = fontSize + padY * 1.6;
+
+                    ctx.fillStyle = pillBg;
+                    drawRoundRect(centerX - pillW / 2, centerY - pillH / 2, pillW, pillH, pillH / 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = pillTextColor;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(text, centerX, centerY + 1);
+                };
+
+                // 1. Bersihkan & Isi Latar Belakang Utama
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+                // 2. Gambar Dekorasi Bingkai Sesuai Pilihan
+                if (currentFrame === 'gift') {
+                    const pad = canvasWidth * 0.08;
+                    const lidTop = canvasHeight * 0.14;
+                    const lidHeight = canvasHeight * 0.13;
+                    const boxTop = lidTop + lidHeight + (canvasHeight * 0.015);
+                    const boxHeight = canvasHeight - boxTop - pad;
+                    const boxWidth = canvasWidth - pad * 2;
+
+                    // Pita Kupu-kupu di atas tutup kado
+                    ctx.strokeStyle = fg;
+                    ctx.lineWidth = canvasWidth * 0.024;
+                    ctx.beginPath();
+                    ctx.ellipse(canvasWidth * 0.41, lidTop - canvasHeight * 0.035, canvasWidth * 0.075, canvasHeight * 0.035, -0.35, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.ellipse(canvasWidth * 0.59, lidTop - canvasHeight * 0.035, canvasWidth * 0.075, canvasHeight * 0.035, 0.35, 0, Math.PI * 2);
+                    ctx.stroke();
+                    // Simpul tengah pita
+                    ctx.fillStyle = fg;
+                    ctx.beginPath();
+                    ctx.arc(canvasWidth * 0.5, lidTop - canvasHeight * 0.015, canvasWidth * 0.025, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Tutup Kado (Tempat tulisan SCAN ME)
+                    ctx.fillStyle = fg;
+                    drawRoundRect(pad * 0.7, lidTop, canvasWidth - pad * 1.4, lidHeight, canvasWidth * 0.03);
+                    ctx.fill();
+
+                    // Tulisan di atas tutup kado
+                    ctx.fillStyle = bg;
+                    ctx.font = `800 ${Math.round(canvasWidth * 0.052)}px Inter, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(labelText, canvasWidth / 2, lidTop + lidHeight / 2 + 1);
+
+                    // Badan Kotak Kado
+                    ctx.strokeStyle = fg;
+                    ctx.lineWidth = canvasWidth * 0.022;
+                    drawRoundRect(pad, boxTop, boxWidth, boxHeight, canvasWidth * 0.04);
+                    ctx.stroke();
+
+                    // Garis Pita Vertikal Halus di belakang QR
+                    ctx.save();
+                    ctx.globalAlpha = 0.12;
+                    ctx.fillStyle = fg;
+                    ctx.fillRect(canvasWidth * 0.46, boxTop, canvasWidth * 0.08, boxHeight);
+                    ctx.restore();
+
+                } else if (currentFrame === 'love') {
+                    // Gambar Bentuk Hati Besar sebagai Bingkai
+                    const cx = canvasWidth / 2;
+                    const topY = canvasHeight * 0.16;
+                    const w = canvasWidth * 0.92;
+                    const h = canvasHeight * 0.80;
+
+                    ctx.save();
+                    ctx.strokeStyle = fg;
+                    ctx.lineWidth = canvasWidth * 0.026;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, topY + h * 0.22);
+                    ctx.bezierCurveTo(cx - w * 0.5, topY - h * 0.18, cx - w * 0.55, topY + h * 0.55, cx, topY + h * 0.96);
+                    ctx.bezierCurveTo(cx + w * 0.55, topY + h * 0.55, cx + w * 0.5, topY - h * 0.18, cx, topY + h * 0.22);
+                    ctx.closePath();
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // Label di bawah QR dalam bentuk hati
+                    drawLabelPill(labelText, cx, qrY + qrSize + canvasHeight * 0.085, fg, bg, Math.round(canvasWidth * 0.042));
+
+                } else if (currentFrame === 'cat') {
+                    // Bingkai Kepala Kucing Lucu dengan Telinga & Kumis
+                    const pad = canvasWidth * 0.10;
+                    const headTop = canvasHeight * 0.18;
+                    const headH = canvasHeight * 0.72;
+                    const headW = canvasWidth - pad * 2;
+
+                    ctx.strokeStyle = fg;
+                    ctx.fillStyle = fg;
+                    ctx.lineWidth = canvasWidth * 0.024;
+
+                    // Telinga Kiri
+                    ctx.beginPath();
+                    ctx.moveTo(pad + headW * 0.08, headTop + headH * 0.06);
+                    ctx.lineTo(pad + headW * 0.16, headTop - headH * 0.16);
+                    ctx.lineTo(pad + headW * 0.36, headTop + headH * 0.01);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Telinga Kanan
+                    ctx.beginPath();
+                    ctx.moveTo(pad + headW * 0.92, headTop + headH * 0.06);
+                    ctx.lineTo(pad + headW * 0.84, headTop - headH * 0.16);
+                    ctx.lineTo(pad + headW * 0.64, headTop + headH * 0.01);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // Wajah Kucing Membulat
+                    drawRoundRect(pad, headTop, headW, headH, canvasWidth * 0.16);
+                    ctx.stroke();
+
+                    // Kumis Kiri & Kanan
+                    ctx.lineWidth = canvasWidth * 0.014;
+                    ctx.beginPath();
+                    ctx.moveTo(pad - canvasWidth * 0.04, headTop + headH * 0.45);
+                    ctx.lineTo(pad + canvasWidth * 0.04, headTop + headH * 0.48);
+                    ctx.moveTo(pad - canvasWidth * 0.04, headTop + headH * 0.55);
+                    ctx.lineTo(pad + canvasWidth * 0.04, headTop + headH * 0.54);
+                    // Kanan
+                    ctx.moveTo(pad + headW + canvasWidth * 0.04, headTop + headH * 0.45);
+                    ctx.lineTo(pad + headW - canvasWidth * 0.04, headTop + headH * 0.48);
+                    ctx.moveTo(pad + headW + canvasWidth * 0.04, headTop + headH * 0.55);
+                    ctx.lineTo(pad + headW - canvasWidth * 0.04, headTop + headH * 0.54);
+                    ctx.stroke();
+
+                    // Label di dagu kucing
+                    drawLabelPill(labelText, canvasWidth / 2, headTop + headH, fg, bg, Math.round(canvasWidth * 0.044));
+
+                } else if (currentFrame === 'cloud') {
+                    // Bingkai Awan Lucu (Fluffy Cloud)
+                    const cx = canvasWidth / 2;
+                    const cy = canvasHeight * 0.52;
+                    ctx.strokeStyle = fg;
+                    ctx.lineWidth = canvasWidth * 0.022;
+
+                    const circles = [
+                        { x: cx - canvasWidth * 0.24, y: cy - canvasHeight * 0.12, r: canvasWidth * 0.22 },
+                        { x: cx + canvasWidth * 0.24, y: cy - canvasHeight * 0.12, r: canvasWidth * 0.22 },
+                        { x: cx, y: cy - canvasHeight * 0.20, r: canvasWidth * 0.24 },
+                        { x: cx - canvasWidth * 0.26, y: cy + canvasHeight * 0.14, r: canvasWidth * 0.21 },
+                        { x: cx + canvasWidth * 0.26, y: cy + canvasHeight * 0.14, r: canvasWidth * 0.21 },
+                        { x: cx, y: cy + canvasHeight * 0.18, r: canvasWidth * 0.24 }
+                    ];
+
+                    // Gambar outline awan
+                    circles.forEach(c => {
+                        ctx.beginPath();
+                        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+                        ctx.stroke();
+                    });
+                    // Isi bagian dalam awan dengan warna latar agar garis dalam bersih
+                    ctx.fillStyle = bg;
+                    circles.forEach(c => {
+                        ctx.beginPath();
+                        ctx.arc(c.x, c.y, c.r - canvasWidth * 0.011, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+
+                    // Label di bawah awan
+                    drawLabelPill(labelText, cx, canvasHeight * 0.90, fg, bg, Math.round(canvasWidth * 0.044));
+                }
+
+                // 3. Gambar Kotak Putih/Latar Bersih di belakang area QR agar mudah dipindai
+                const qrPad = qrSize * 0.05;
+                ctx.fillStyle = bg;
+                drawRoundRect(qrX - qrPad, qrY - qrPad, qrSize + qrPad * 2, qrSize + qrPad * 2, qrSize * 0.04);
+                ctx.fill();
+
+                // 4. Gambar Matriks Titik QR Code sesuai gaya titik (Kotak, Bulat, Permata)
+                const cellSize = qrSize / moduleCount;
+                ctx.fillStyle = fg;
+
+                // Area tengah dikosongkan sedikit jika ada stiker/emoji tengah
+                const centerClearRadius = currentCenterIcon ? Math.floor(moduleCount * 0.15) : 0;
+                const midModule = Math.floor(moduleCount / 2);
+
+                for (let row = 0; row < moduleCount; row++) {
+                    for (let col = 0; col < moduleCount; col++) {
+                        if (!matrixData[row][col]) continue;
+
+                        // Lewati modul di tengah jika stiker aktif
+                        if (centerClearRadius > 0 &&
+                            Math.abs(row - midModule) <= centerClearRadius &&
+                            Math.abs(col - midModule) <= centerClearRadius) {
+                            continue;
+                        }
+
+                        const x = qrX + col * cellSize;
+                        const y = qrY + row * cellSize;
+
+                        // Deteksi apakah modul merupakan bagian dari 3 kotak sudut (Finder Patterns)
+                        const isFinder = (row < 7 && col < 7) ||
+                                         (row < 7 && col >= moduleCount - 7) ||
+                                         (row >= moduleCount - 7 && col < 7);
+
+                        if (isFinder || currentDotStyle === 'square') {
+                            ctx.fillRect(x, y, cellSize + 0.4, cellSize + 0.4);
+                        } else if (currentDotStyle === 'rounded') {
+                            ctx.beginPath();
+                            ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize * 0.43, 0, Math.PI * 2);
+                            ctx.fill();
+                        } else if (currentDotStyle === 'diamond') {
+                            ctx.beginPath();
+                            ctx.moveTo(x + cellSize / 2, y + cellSize * 0.06);
+                            ctx.lineTo(x + cellSize * 0.94, y + cellSize / 2);
+                            ctx.lineTo(x + cellSize / 2, y + cellSize * 0.94);
+                            ctx.lineTo(x + cellSize * 0.06, y + cellSize / 2);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    }
+                }
+
+                // 5. Gambar Stiker / Emoji di Tengah QR jika dipilih
+                if (currentCenterIcon) {
+                    const badgeSize = qrSize * 0.24;
+                    const cx = qrX + qrSize / 2;
+                    const cy = qrY + qrSize / 2;
+
+                    // Lingkaran latar belakang stiker
+                    ctx.fillStyle = bg;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, badgeSize * 0.56, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = fg;
+                    ctx.lineWidth = Math.max(2, qrSize * 0.01);
+                    ctx.stroke();
+
+                    // Gambar Emoji
+                    ctx.font = `${Math.round(badgeSize * 0.72)}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(currentCenterIcon, cx, cy + 2);
+                }
+            }
+
+            // --- 6. FUNGSI UTAMA GENERATE QR CODE ---
+            function generateQR() {
+                const text = qrText.value.trim();
+                const fg = fgColorInput.value;
+                const bg = bgColorInput.value;
+                const size = parseInt(qrSizeInput.value, 10);
+
+                // Update label teks warna & ukuran
+                fgHex.textContent = fg.toUpperCase();
+                bgHex.textContent = bg.toUpperCase();
+                sizeLabel.textContent = `${size} × ${size} px`;
+
+                validateInput(text);
+                checkColorContrast(fg, bg);
+
+                // Bersihkan kontainer data QR
+                qrcodeContainer.innerHTML = '';
+
+                if (!text) {
+                    styledQrCanvas.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                    emptyState.classList.add('flex');
+                    downloadBtn.disabled = true;
+                    copyBtn.disabled = true;
+                    return;
+                }
+
+                styledQrCanvas.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+                downloadBtn.disabled = false;
+                copyBtn.disabled = false;
+
+                try {
+                    // Buat instance QRCode sementara untuk mengambil matriks modul boolean
+                    qrInstance = new QRCode(qrcodeContainer, {
+                        text: text,
+                        width: 128,
+                        height: 128,
+                        colorDark: fg,
+                        colorLight: bg,
+                        correctLevel: QRCode.CorrectLevel.H // Koreksi tinggi agar aman pakai stiker & bingkai
+                    });
+
+                    const modules = qrInstance._oQRCode.modules;
+                    const moduleCount = qrInstance._oQRCode.moduleCount;
+
+                    // Render ke kanvas kustom
+                    renderCustomStyledQR(modules, moduleCount);
+                } catch (error) {
+                    console.error('Gagal membuat QR Code:', error);
+                    showToast('Teks terlalu panjang untuk dimuat dalam QR Code.', true);
+                }
+            }
+
+            // --- 7. FUNGSI DOWNLOAD PNG HASIL KUSTOM ---
+            function downloadQRCode() {
+                const text = qrText.value.trim();
+                if (!text) return;
+
+                try {
+                    const dataUrl = styledQrCanvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    const timestamp = new Date().toISOString().slice(0, 10);
+                    const frameSuffix = currentFrame !== 'none' ? `-${currentFrame}` : '';
+                    link.download = `qrcode${frameSuffix}-${timestamp}.png`;
+                    link.href = dataUrl;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showToast('Gambar PNG berhasil diunduh!');
+                } catch (err) {
+                    console.error(err);
+                    showToast('Gagal mengunduh gambar.', true);
+                }
+            }
+
+            // --- 8. EVENT LISTENERS ---
+            qrText.addEventListener('input', generateQR);
+            fgColorInput.addEventListener('input', generateQR);
+            bgColorInput.addEventListener('input', generateQR);
+            qrSizeInput.addEventListener('input', generateQR);
+            frameTextInput.addEventListener('input', generateQR);
+
+            // Tombol Pilihan Bingkai Lucu
+            frameButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    frameButtons.forEach(b => {
+                        b.classList.remove('border-2', 'border-brand-600', 'bg-brand-50/70', 'dark:bg-brand-950/50', 'text-brand-700', 'dark:text-brand-300');
+                        b.classList.add('border', 'border-slate-200', 'dark:border-slate-700', 'bg-slate-50/50', 'dark:bg-slate-800/50', 'text-slate-700', 'dark:text-slate-300');
+                    });
+                    btn.classList.remove('border', 'border-slate-200', 'dark:border-slate-700', 'bg-slate-50/50', 'dark:bg-slate-800/50', 'text-slate-700', 'dark:text-slate-300');
+                    btn.classList.add('border-2', 'border-brand-600', 'bg-brand-50/70', 'dark:bg-brand-950/50', 'text-brand-700', 'dark:text-brand-300');
+
+                    currentFrame = btn.dataset.frame;
+                    if (currentFrame === 'none') {
+                        frameTextContainer.classList.add('hidden');
+                    } else {
+                        frameTextContainer.classList.remove('hidden');
+                    }
+                    generateQR();
+                });
+            });
+
+            // Tombol Preset Label Cepat (SCAN ME, FOR YOU)
+            quickLabelButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    frameTextInput.value = btn.dataset.label;
+                    generateQR();
+                });
+            });
+
+            // Tombol Gaya Titik QR
+            dotButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    dotButtons.forEach(b => {
+                        b.classList.remove('border-2', 'border-brand-600', 'bg-brand-50/70', 'dark:bg-brand-950/50', 'text-brand-700', 'dark:text-brand-300', 'font-semibold');
+                        b.classList.add('border', 'border-slate-200', 'dark:border-slate-700', 'bg-white', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-300', 'font-medium');
+                    });
+                    btn.classList.remove('border', 'border-slate-200', 'dark:border-slate-700', 'bg-white', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-300', 'font-medium');
+                    btn.classList.add('border-2', 'border-brand-600', 'bg-brand-50/70', 'dark:bg-brand-950/50', 'text-brand-700', 'dark:text-brand-300', 'font-semibold');
+
+                    currentDotStyle = btn.dataset.dot;
+                    generateQR();
+                });
+            });
+
+            // Tombol Stiker Tengah QR
+            iconButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    iconButtons.forEach(b => {
+                        b.classList.remove('border-2', 'border-brand-600', 'bg-brand-50/70', 'dark:bg-brand-950/50', 'text-brand-700', 'dark:text-brand-300');
+                        b.classList.add('border', 'border-slate-200', 'dark:border-slate-700', 'bg-white', 'dark:bg-slate-800');
+                    });
+                    btn.classList.remove('border', 'border-slate-200', 'dark:border-slate-700', 'bg-white', 'dark:bg-slate-800');
+                    btn.classList.add('border-2', 'border-brand-600', 'bg-brand-50/70', 'dark:bg-brand-950/50', 'text-brand-700', 'dark:text-brand-300');
+
+                    currentCenterIcon = btn.dataset.icon;
+                    generateQR();
+                });
+            });
+
+            // Tombol hapus teks cepat
+            clearInputBtn.addEventListener('click', () => {
+                qrText.value = '';
+                qrText.focus();
+                generateQR();
+            });
+
+            // Preset warna cepat
+            presetButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    fgColorInput.value = btn.dataset.fg;
+                    bgColorInput.value = btn.dataset.bg;
+                    generateQR();
+                });
+            });
+
+            // Tombol Download
+            downloadBtn.addEventListener('click', downloadQRCode);
+
+            // Tombol Salin Teks/Link (menggunakan fallback execCommand sesuai lingkungan iFrame)
+            copyBtn.addEventListener('click', () => {
+                const textToCopy = qrText.value.trim();
+                if (!textToCopy) return;
+
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = textToCopy;
+                tempTextArea.style.position = 'fixed';
+                tempTextArea.style.left = '-9999px';
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+
+                try {
+                    document.execCommand('copy');
+                    showToast('Tautan/teks berhasil disalin ke papan klip!');
+                } catch (err) {
+                    showToast('Gagal menyalin teks.', true);
+                } finally {
+                    document.body.removeChild(tempTextArea);
+                }
+            });
+
+            // Tombol Reset ke pengaturan awal
+            resetBtn.addEventListener('click', () => {
+                qrText.value = DEFAULT_STATE.text;
+                fgColorInput.value = DEFAULT_STATE.fg;
+                bgColorInput.value = DEFAULT_STATE.bg;
+                qrSizeInput.value = DEFAULT_STATE.size;
+                frameTextInput.value = DEFAULT_STATE.frameText;
+                
+                // Reset tombol pilihan UI
+                frameButtons[0].click();
+                dotButtons[0].click();
+                iconButtons[0].click();
+                
+                generateQR();
+                showToast('Pengaturan dikembalikan ke awal');
+            });
+
+            // Jalankan saat pertama kali dimuat
+            initTheme();
+            generateQR();
+        });
+    </script>
+</body>
+</html>
